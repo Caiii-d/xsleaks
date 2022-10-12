@@ -1,0 +1,68 @@
+\subsection{缓存探测}\label{sec:cache}
+
+当用于访问一个网页，由于用户再次访问同一个网页的概率较大，浏览器会将某些资源，比如图像、脚本、HTML 代码，缓存在用户的机器上。当用户再次访问用一个网页，浏览器不必从服务器再次下载，而可以更快速地从本地存储读取，从而加快了网页加载的速度。缓存探测漏洞基于检测某个资源是否被缓存，从而攻击者可以判断被攻击者是否曾经访问有个网页。
+
+此类漏洞有多种实现方法。一种简单的方法是使用时序攻击技巧。这种攻击来自于缓存本质的用途，即若某个资源被缓存了，则它的访问时间较短，反之亦然。
+
+
+Related:
+
+\begin{itemize}
+    \item \url{https://www.cs.jhu.edu/~fabian/courses/CS600.424/course_papers/webtiming.pdf} - OLD, from 2000, gives experimental results, also discusses DNS and cookie cache
+    \item \url{https://terjanq.github.io/Bug-Bounty/Google/cache-attack-06jd2d2mz2r0/index.html} - error based cache attack on Google products
+    \item \url{http://sirdarckcat.blogspot.com/2019/03/http-cache-cross-site-leaks.html} - addresses some basic defense strategies
+    \item \url{https://web.archive.org/web/20200614162731/http://u.cs.biu.ac.il/~herzbea/security/15-01-XSSearch.pdf} - improvements on timing attacks, uses statistics, amplification, and DaC algs, not specific to cache probing
+    \item \url{https://link.springer.com/content/pdf/10.1007/978-3-319-18467-8.pdf} pdf page 110, parallized cache probing
+\end{itemize}
+
+\subsubsection{错误事件}
+
+\begin{enumerate}
+    \item 使被缓存的资源无效：
+    \begin{itemize}
+        \item 使用 \code{cache:'reload'} 发出请求，在收到响应之前使用 \code{AbortController.abort()} 终止
+        \item 使用 \code{cache:'reload'} 以及 overlong referer header
+        \item A POST request with a fetch no-cors
+        \item 将请求失败的 Content-Type, Accept, Accept-Language 等等请求头，必须针对由一个网站
+    \end{itemize}
+    \item 发出请求，使得某一个资源被缓存
+    \item 再对同一个资源发出请求，但需要将服务器拒绝此请求（比如使用 overlong referer header）。若此资源在第二步被缓存了，则此请求会成功，否则抛出错误
+\end{enumerate}
+
+\subsubsection{CORS error on Origin Reflection misconfiguration}
+
+若响应包含 Access-Control-Allow-Orign (ACAO)，发出请求的来源以及被请求的资源一起被缓存在本地。若 \code{attacker.com} 访问此资源：
+
+\begin{itemize}
+    \item 若此资源未被缓存，此资源以及 \code{Access-Control-Allow-Orign (ACAO): attacker.com} 将被缓存
+    \item 若此资源被缓存，由于 \code{attacker.com} 与以缓存的 \code{target.com} 不匹配，会产生 \code{CORS} 错误，从而可以判定此资源被缓存过
+\end{itemize}
+
+容易避免：在资源上设置 \code{Access-Control-Allow-Origin: *}
+
+\subsubsection{Fetch with AbortController}
+
+见 错误事件
+
+\subsubsection{防范措施}
+
+\begin{itemize}
+    \item 通过设置 \code{Cache-Control: no-store} 禁用缓存，非常简单、高效地防止此类攻击，并被大多数浏览器支持，但对网页的加载速度有负面的影响
+    \item 在资源的 URL 中加随机记号，比如 \code{users/john.jpg} 变成 \code{users/john.jpg?cache_buster=<RANDOM_TOKEN>}。依然可以使用缓存机制，从而不会影响到加载速度，但是必须由每个网站的管理人员实现，而不是由浏览器实现，可以保护所有网站的防范措施
+    \item Fetch metadata: 可以让服务器判定请求来自于相同还是不同的来源。比如如果资源的 URL 为 \code{cdn.example.com/image.png} 并且设置了 \code{Vary: Sec-Fetch-Site}（SFS），则：
+    \begin{table}[h!]
+        \centering
+        \begin{tabular}{cc}
+            请求来源 & SFS \\\midrule
+            \code{example.com} & \code{same-site} \\
+            \code{cdn.example.com} & \code{same-origin} \\
+            \code{evil.com} & \code{cross-site} \\
+        \end{tabular}
+    \end{table}
+    依然可以使用缓存机制但是弊端包括：
+    \begin{itemize}
+        \item 并非所有浏览器支持 fetch metadata
+        \item 跨站点资源无法被保护
+        \item 资源若被第三方访问，也无法被保护
+    \end{itemize}
+\end{itemize}

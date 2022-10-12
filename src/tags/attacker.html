@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Response size leak</title>
+    <script>
+
+      function show(tag, attribute, url, size, event, diff) {
+        document.getElementById('tbody').innerHTML += `<tr><td>${tag}</td><td>${attribute}</td><td>${size}</td><td>${event}</td><td>${diff}</td><tr>`;
+      }
+
+      var events = [
+        'onload', 'onerror', 'onabort', 'onemptied', 'onstalled', 'onsuspend',
+      ]
+      var id = 0;
+
+      function get(tag, attribute, location, url, size) {
+        let start = performance.getEntries().length;
+        let element = document.createElement(tag);
+
+        if (tag == 'input') {
+          element.type = 'image';
+        } else if (tag == 'link') {
+          element.type = 'preload';
+          element.as = 'video';
+        } else if (tag == 'source' || tag == 'track') {
+          new_element = document.createElement('audio');
+          new_element.appendChild(element);
+          element = new_element;
+        }
+
+
+        element[attribute] = `${url}?id=${id < 10 ? '0' + id : id}&size=${size}&tag=${tag}-${attribute}`;
+        id++;
+
+        
+
+        if (location != '') {
+          //element.hidden = true;
+          document[location].appendChild(element);
+        }
+
+        for (const event of events) {
+          element[event] = () => {
+            show(tag, attribute, url, size, event, performance.getEntries().length - start);
+          }
+        }
+      }
+
+      var base = 'https://georgetian.com'; // set target URL here
+
+      var sizes = [
+        10,
+        1000,
+      ];
+
+      var tags = [
+        //['applet', 'code', 'body'], not supported in HTML 5
+        ['audio', 'src', 'body'],
+        ['embed', 'src', 'body'],
+        ['frame', 'src', 'body'],
+        ['iframe', 'src', 'body'],
+        ['img', 'src', 'body'],
+        ['input', 'src', 'body'],
+        ['link', 'href', 'body'],
+        ['object', 'data', 'body'],
+        ['script', 'src', 'body'],
+        ['source', 'src', 'body'], 
+        ['track', 'src', 'body'],
+        ['video', 'poster', 'body'],
+        ['video', 'src', 'body'],
+      ]
+
+      var delay = 200;
+
+      function run() {
+        
+        fetch('/reset');
+
+        wait = 1
+        for (const tag of tags) {
+          for (const size of sizes) {
+            setTimeout(get, wait * delay, tag[0], tag[1], tag[2], base, size);
+            wait++;
+          }
+        }
+
+      }
+
+      if ('serviceWorker' in navigator) {
+        addEventListener('load', async () => {
+          await navigator.serviceWorker.register('serviceworker.js');
+          setTimeout(run, 1000);
+        });
+			} else {
+        document.body.innerHTML += ('Browser does not support Service Workers');
+      }
+
+    </script>
+
+    <style>
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+    </style>
+
+  </head>
+
+  <body>
+    <table>
+      <thead>
+        <tr>
+          <th>Tag</th>
+          <th>Attribute</th>
+          <th>Size</th>
+          <th>Event</th>
+          <th>Entries</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+
+      </tbody>
+    </table>
+  </body>
+
+</html>

@@ -1,0 +1,115 @@
+https://lists.w3.org/Archives/Public/public-webappsec/2015Apr/thread.html#msg74
+
+        > On 3 Apr 2015, at 8:25 pm, Anne van Kesteren <annevk@annevk.nl> wrote:
+        > 
+            > On Thu, Apr 2, 2015 at 11:02 PM, Odin Hørthe Omdal <odinho@opera.com> wrote:
+            >> From how I read Fetch
+            >> now, it seems as if the 304 would simply get in the cached response from
+            >> last time, and thus also the CORS responses that were part of that
+            >> original 200.
+        > 
+        > No. Per the current specification CORS is checked first, then the
+        > response code is handled. So a 304 without corresponding CORS headers
+        > would result in a network error before the status is even looked at.
+
+    From <https://fetch.spec.whatwg.org/#http-fetch>:
+
+    """
+    4.2 HTTP fetch
+
+    […]
+
+    5. Set response to the result of performing an HTTP network or cache fetch using request with credentials flag if set and authentication fetch flag if set.
+
+    6. If the CORS flag is set and a CORS check for request and response returns failure, return a network error.
+    """
+
+    304 is applied to the response in "HTTP network or cache fetch," but you don't allow for the handling of conditional requests there (which all browsers do implement).
+
+    I'd be happy to work on some proposals to fix that, if you're amenable.
+
+
+    > We can change that, but we'd need to be careful not to introduce new
+    > cross-origin attack vectors. Proposals welcome.
+
+    Not sure what's new here — every browser I tested passed the core of that suite. Trying to apply CORS to a 304 pre-cache will not only go against current practice, it'll also cause incompatibility with deployed servers and proxies (as discussed ad nauseum last time around).
+
+    Cheers,
+
+    --
+    Mark Nottingham   https://www.mnot.net/
+
+
+    https://lists.w3.org/Archives/Public/public-webappsec/2015Apr/0076.html
+
+    > On 8 Apr 2015, at 2:33 pm, Anne van Kesteren <annevk@annevk.nl> wrote:
+    > 
+    >> I'd be happy to work on some proposals to fix that, if you're amenable.
+    > 
+    > Sure. It seems to me though that if it's not in the cache you make
+    > network fetch and only then can you handle 304. But I guess that could
+    > be more tightly coupled than say, redirects, although it seems
+    > somewhat odd.
+
+    You only get a 304 (legitimately) when you send a conditional request, and the browser will only send a conditional request when it has something in cache — but that thing is stale (hence the conditional request).
+
+    If the client-side code is generating the conditional request and trying to handle the 304 themselves, yes it's a problem (and IIRC we left that as unsolveable last time around).
+
+
+    >> Not sure what's new here — every browser I tested passed the core of that suite.
+    > 
+    > Well that certainly argues for changing the specification. Is there
+    > overlap in the tests they don't pass?
+
+    IIRC it was the stuff you asked me to add around Access-Control-Expose-Headers.
+
+    Cheers,
+
+    https://lists.w3.org/Archives/Public/public-webappsec/2015Apr/0077.html
+
+    > You only get a 304 (legitimately) when you send a conditional request, and the browser will only send a conditional request when it has something in cache — but that thing is stale (hence the conditional request).
+
+    Right. And in that case the requesting party sees a 200 (or whatever
+    was cached I supposed), not a 304. Looking forward to your suggestions
+    on fixing this.
+
+
+    > If the client-side code is generating the conditional request and trying to handle the 304 themselves, yes it's a problem (and IIRC we left that as unsolveable last time around).
+
+    In that case we should probably require same-origin-or-CORS (the
+    current code path). Otherwise we might end up exposing bits in the 304
+    response that were not meant to be seen. But I guess we should also
+    see what browsers do here if that's not yet covered.
+
+
+    > IIRC it was the stuff you asked me to add around Access-Control-Expose-Headers.
+
+    Ah okay, so browsers fail at combining headers?
+
+
+https://github.com/whatwg/fetch/issues/97  206 (partial content) / 304 (not modified) handling broken
+
+    https://github.com/whatwg/fetch/pull/141 Update headers upon a 304; fixes #97 
+
+    the underlying issue AFAIK was that response headers weren't updated by the 304. Please explain?
+
+
+https://github.com/whatwg/fetch/issues/144
+
+
+    So from those:
+
+    Already happens.
+    Is something for the Cache API to decide.
+    Already happens in step 8 of https://fetch.spec.whatwg.org/#concept-http-network-fetch as far as I can tell.
+    This does not currently happen.
+    Here are some things I'm wondering about:
+
+    Should we change https://fetch.spec.whatwg.org/#concept-http-network-or-cache-fetch step 15 to talk about one or more partial responses?
+    Should step 17.1 explicitly talk about a complete response?
+    Is there any freshening of headers when you get a 206 response? https://tools.ietf.org/html/rfc7234#section-4.3.4 seems to suggest there isn't. HTTP Range Requests also does not talk about this as far as I can tell.
+    Is therefore the only thing we need to introduce a 206 clause (similar to step 17 for 304) when cache mode is either "default" or "no-cache" that does recombining?
+
+    https://httpwg.org/specs/rfc7233.html#combining.byte.ranges
+
+        If the most recent response is an incomplete 200 (OK) response, then the header fields of that response are used for any combined response and replace those of the matching stored responses.

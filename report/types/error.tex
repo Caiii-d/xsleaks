@@ -1,0 +1,16 @@
+\subsection{Error Events}
+
+网页资源的加载可以成果或失败，并调用元素的一个函数比如 \code{onload}、\code{onerror} 等等 \url{https://www.w3schools.com/tags/ref_eventattributes.asp}。用户未登录，服务器返回的数据无法被浏览器解析都可能 \code{onerror} 的触发。比如，如果用户的头像 \code{target.com/profile_picture} 只能被登录后的用户访问，则以下的代码可以泄漏用户的登录状态：
+
+\begin{lstlisting}
+function is_logged_in(url) {
+    let img = document.createElement('img');
+    img.src = url;
+    img.onload = () => console.log('Logged in');
+    img.onerror = () => console.log('Not logged in');
+}
+is_logged_in('https://target.com/profile_picture');
+
+\end{lstlisting}
+
+不同的浏览器、HTML 标签、不同的头都可能影响到被触发的事件。与之前的一些攻击一样，为了防止此类攻击，网页开发者可以将不同状态的资源有一致的行为。此外，资源的 URL 后可以加随机记号，比如 \code{target.com/profile_picture&token=<secret>}。这样攻击者就无法容易地向资源发请求。

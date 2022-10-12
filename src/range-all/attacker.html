@@ -1,0 +1,29 @@
+<head>
+  <title>Response size leak</title>
+  <script>
+    
+    function probeError(url) {
+      let script = document.createElement('text');
+      script.src = url;
+      script.onload = () => console.log('Onload event triggered');
+      script.onerror = () => console.log('Error event triggered');
+      //document.head.appendChild(script);
+    }
+
+    async function run(url) {
+      for (let i = 100; i < 600; i++) {
+        document.body.innerHTML += `${i} ${await get_diff(url, i)}<br>`;
+      }
+    }
+    
+    onload = () => {
+      probeError('https://www.google.com/robots.txt');
+      probeError('https://google.com/');
+    }
+  </script>
+</head>
+
+<body>
+</body>
+
+</html>

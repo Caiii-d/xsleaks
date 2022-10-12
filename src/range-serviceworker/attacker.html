@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Response size leak</title>
+    <script>
+
+
+      function show(element, url, size, event, diff) {
+        document.getElementById('tbody').innerHTML += `<tr><td>${element}</td><td>${url}</td><td>${size}</td><td>${event}</td><td>${diff}</td><tr>`;
+      }
+
+      function get(element, url, size) {
+        let start = performance.getEntries().length;
+        let e = document.createElement(element);
+        e['src'] = `${url}?size=${size}`;
+
+        e.onload = () => {
+          show(element, url, size, 'onload', performance.getEntries().length - start);
+          console.log(performance.getEntries())
+        }
+        e.onerror = () => {
+          show(element, url, size, 'onerror', performance.getEntries().length - start);
+          console.log(performance.getEntries())
+
+        }
+        e.onabort = () => {
+          show(element, url, size, 'onabort', performance.getEntries().length - start);
+        }
+        e.onemptied = () => {
+          show(element, url, size, 'onemptied', performance.getEntries().length - start);
+        }
+        e.onstalled = () => {
+          show(element, url, size, 'onstalled', performance.getEntries().length - start);
+        }
+        e.onsuspend = () => {
+          show(element, url, size, 'onsuspend', performance.getEntries().length - start);
+        }
+      }
+
+      var base = 'https://target.ziwen.ibgang.com/';
+      var resources = [
+        //'text.txt',
+        'audio.mp3',
+        //'frame',
+        'iframe',
+        'img.png',
+        //'script.js',
+        'video.mp4',
+      ];
+      var sizes = [
+        2,
+        95000,
+      ];
+
+
+      function run() {
+
+        let elements = [];
+        for (const resource of resources) {
+          elements.push(resource.split('.')[0]);
+        };
+        let requests = [];
+
+        for (const element of elements) {
+          for (const resource of resources) {
+            for (const size of sizes) {
+              requests.push([element, base + resource, size]);
+            }
+          }
+        }
+        for (let i = 0; i < requests.length; i++) {
+          setTimeout(get, (i + 1) * 1000, requests[i][0], requests[i][1], requests[i][2]);
+        }
+      }
+
+      if ('serviceWorker' in navigator) {
+        addEventListener('load', async () => {
+          await navigator.serviceWorker.register('serviceworker.js');
+          run();
+        });
+			} else {
+        //document.body.innerHTML += ('Browser does not support Service Workers');
+      }
+
+    </script>
+
+    <style>
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+    </style>
+
+  </head>
+
+  <body>
+    <!-- <input type="checkbox" id="sw">
+    <label>Install Service Worker</label>
+    <br>
+    <button onclick="run();">Start</button>
+    <br> -->
+    <table>
+      <thead>
+        <tr>
+          <th>Element</th>
+          <th>URL</th>
+          <th>Size</th>
+          <th>Event</th>
+          <th>Entries</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+
+      </tbody>
+    </table>
+  </body>
+
+</html>

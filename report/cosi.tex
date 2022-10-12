@@ -1,0 +1,70 @@
+\subsection{COSI}
+
+跨源状态推断（Cross-Origin State Inference）攻击\cite{cosi}：
+
+\begin{itemize}
+    \item 考虑两个网站
+    \begin{itemize}
+        \item 攻击网站：用于发出跨站点请求，是攻击者（部分）控制的网站
+        \item 目标网站：用户在此网站上有不同的状态，不被攻击者控制的网站
+    \end{itemize}
+    \item 攻击网站中含有依赖于状态的网址（state-dependent URL, SD-URL），比如一个只有用户登录后才能访问的网页
+    \item 被包含的 SD-URL 使用户的浏览器发出跨源请求，但同源策略防止攻击网站直接阅读响应
+    \item 攻击者可以通过跨站点泄露漏洞间接地读取响应
+\end{itemize}
+
+State scripts: In this work, we capture states at a target site using state scripts that can be executed to automatically log into the target site using a configurable browser and the credentials of an account with a specific configuration. For example, we may create multiple user accounts with different configurations, e.g., premium and free accounts, two users that own different blogs, or authors that have submitted different papers to a conference management system. We also create a state script for the logged out state.
+
+两个阶段：
+
+\begin{enumerate}
+    \item 准备
+    \begin{itemize}
+        \item The goal of the preparation phase is to create an attack page that when visited by a victim will leak the victim’s state at the target web site
+        \item An attack page implements at least one, possibly more, attack vectors
+        \item Attack vector = (SD-URL, inclusion method (embedding SD-URL into attack page), attack class (defines, among others, a leak
+        method (or XS-Leak) that interacts with the victim’s browser to disclose a victim’s state at the target site))
+        \item URL is state-dependent if, when requested through HTTP(S), it returns different responses depending on the state it is visited from
+        \item Note that it is not needed that
+        each state returns a different response. For example, if there
+        are 6 states and two different responses, each for three states,
+        the URL is still state-dependent
+        \item When the attack page is visited by the
+        victim, the inclusion method forces the victim’s browser to
+        automatically request the SD-URL from the target site.
+        \item However, there exist XS-Leaks that allow bypassing a browser’s SOP to disclose information about cross-origin responses
+        \item In this work, we introduce
+        the concept of a COSI attack class, which defines the two different responses to a SD-URL that can be distinguished using a XS-Leak, the possible inclusion methods that can be used in conjunction with the XS-Leak, and the browsers affected
+        \item Attacks classes are independent of the target site states and thus can be used to mount attacks against different targets
+    \end{itemize}
+    \item 攻击
+    \begin{itemize}
+        \item the attacker convinces the victim into visiting the attack page
+        \item \textbf{more than 2 states possible}
+    \end{itemize}
+    \item threat model
+    \begin{itemize}
+        \item attacker: can trick victims into loading the attack page on their web browsers, during prep can create/manage diff acc on target site, controls attack site, can identify victim's browser version
+        \item victim: uses updated browser, can be lured to attack site, uses target website using same browser as attack website
+        \item target site: contains at least one SD-URL for which the attacker knows an attack class, does not suffer from any known vulns
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{COSI attack classes}
+
+6-tuple
+
+\begin{itemize}
+    \item class name
+    \item 2 signatures for 2 groups of responses that can be distinguished using the attack class
+    \item xsleak
+    \item list of inclusion methods
+    \item list of affected browsers
+\end{itemize}
+
+Identifying attack classes
+
+\begin{itemize}
+    \item Our process to discover COSI attack classes comprises of three main steps: (1) identify and validate previously proposed COSI attack instances; (2) generalize known COSI attack instances into COSI attack classes; and (3) discover previously unknown attack classes.
+    \item Generalizing a COSI attack instance into a COSI attack class comprises of two steps. First, identifying the set of responses to the inclusion method used in the attack instance, that still trigger the same observable difference in the browser (e.g., onload/onerror or different object property values). Then, checking if the observable difference still manifests with other inclusion methods and browsers
+\end{itemize}

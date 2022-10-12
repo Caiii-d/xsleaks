@@ -1,0 +1,41 @@
+chromium bug - 1xx-5xx codes in getEntry().length -- functions as a proxy - see if it affects other browsers
+fetch issue from above webpage
+
+img src onload onerror
+
+
+
+
+
+flask return 206 + serviceworker - see if file exists by looking at status code
+
+read the github comment from the source
+
+KEEP NOTES
+
+
+
+range header upper limit 65500?
+
+
+
+key: audio
+only fixed audio?
+
+why is img not intercepted?
+
+other elements with src attribute
+
+summarize leaks
+
+serviceworker overall function/leaks
+
+does browser differentiate between response from sw vs server
+
+
+
+img range header - use gif?
+
+- body: use ; or space for valid js
+- hidden doesn't request for input
+- input needs type to be img

@@ -1,0 +1,7 @@
+\subsection{\code{postMessage}}
+
+\url{https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage} \code{window.postMessage()} 实现了不同 \code{Window} 对象之间的跨站点通讯，比如一个网页和它创建的弹窗或它之中的 \code{iframe}。\code{postMessage()} 所发出的 \code{MessageEvent} 这个事件可以泄漏信息，比如如果一个网站在用户名存在的情况下发出 \code{MessageEvent}，则可以判定一个用户的用户名。此外，\code{MessageEvent} 中也可以含有敏感信息。
+
+防止攻击者滥用此漏洞目前是网页开发者的责任。开发者需要保证网页在不同的（登录、授权）状态下，\code{postMessage} 的行为是一致的。此外，应该合理设定 \code{postMessage} 的  \code{targetOrigin} 参数，使得只有目标站点可以读取 \code{MessageEvent} 中的信息。
+
+关键词：浏览器安全、跨站点泄露漏洞、Chromium。

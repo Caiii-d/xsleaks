@@ -1,0 +1,21 @@
+\section{形式模型}
+
+\citeauthor{modelbase} \cite{modelbase} 定义了跨站点泄露漏洞的形式模型。根据他们的定义，跨站点泄露漏洞是输出一个比特 $b'$ 的函数 $xsl$：
+$$b'=xsl(sdr, i, t)$$
+
+其输入为：
+
+\begin{itemize}
+    \item $sdr$：依赖于状态的资源（state-dependent resource），而它是二元组 $(url, (s, d))$，其中 $(s, d)\in\{(s_0, d_0), (s_1, d_1)\}$：
+    \begin{itemize}
+        \item $url$：目标资源的 URL，可以包括若干个查询参数，比如 \url{https://www.google.com/search?q=xsleaks}。
+        \item $S=\{s_0, s_1\}$：网站的两个状态的集合。
+        \item $D=\{d_0, d_1\}$：网站的行为的差异，依赖于 $s_0$ 和 $s_1$。
+    \end{itemize}
+    \item $i\in I$：包含方法（inclusion method），即如何将攻击网站向 $sdr$ 发出请求
+    \item $t\in T$：泄露技术（leak technique），即如何判别目标网站上的差异
+\end{itemize}
+
+$(s,d)$ 的定义比较抽象因为对于不同的浏览器，不同的 URL，不同的一对状态，或不同的 $i$ 可以展现出不同的差异。比如，若 $s_0$ 是用户未登录的状态，$s_1$ 是用户登录的状态，若使用缓存探测 （章节 \ref{sec:cache}），$d_0$ 可以是用户发布的帖子未缓存，而 $d_1$ 是用户发布的帖子以缓存，可以设 $i$ 为时序攻击判别 $d_0$ 以及 $d_1$。或者，若登录和未登录状态下的网页有不同的 \code{frame} 个数，可以用计帧法（章节 \ref{sec:frame}）判别两个状态。
+
+其次，虽然一个网页可以有多个状态，但可以简化到二元、是否问题。比如如果一个邮件的标题可以有无限多种标题，但通过判别“第一个字母是否是 ‘a’”、“第一个字母是否是 ‘b’”、……、“第二个字母是否是 ‘a’”等等逐渐获得完整的标题。

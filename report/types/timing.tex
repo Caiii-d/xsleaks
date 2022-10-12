@@ -1,0 +1,22 @@
+\subsection{时序攻击}
+
+时序攻击通过测量两个事件之间的时间间隔而推断出信息。
+
+时序攻击的最重要的要素之一是时间间隔的测量 \cite{clock}。Performance API 中的 \code{performance.now()} 返回网页加载到调用函数之间的时间间隔，可以达到微秒级别的精确度 \cite{m_now}。为了避免使用此函数的攻击，有些浏览器降低了\code{performance.now()} 的精确度 \cite{p_chr,p_moz,p_web}。与较老的 Date API，它们是两个显式时钟。此外，隐试的时钟包括 \cite{timers}：
+
+\begin{multicols}{2}
+    \begin{itemize}
+        \item CSS 动画
+        \item setTimeout
+        \item setImmediate
+        \item postMessage
+        \item Sub worker
+        \item Broadcast Channel
+        \item MessageChannel
+        \item SharedArrayBuffer
+    \end{itemize}
+\end{multicols}
+
+一个使用时序攻击挖掘的信息包括用户的网速，通过测量一个较大文件的下载时间 \cite{speed}。
+
+在一些情况下，比如成功以及失败的请求所返回的响应的大小相似，时序攻击准确性会降低。膨胀技巧（inflation technique）可以增加两种响应事件的差异。一种办法是将服务器需要传输的数据增加，从而增加传输事件（见章节 \ref{sec:search} 中的案例）。另一种方式是增加服务器的计算工作量。此方法适用于让用户发出含有复杂的查询参数的请求 \cite{inflation}。膨胀以及统计技巧 \cite{stats} 的结合可以将时序攻击成为一种精确的跨站点泄露漏洞。

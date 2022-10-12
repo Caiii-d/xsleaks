@@ -1,0 +1,90 @@
+\section{基于 Service Worker 的 Chromium 漏洞}
+
+以下的实验代码都存放在 \url{https://github.com/georgetian3/xsleaks/tree/main/src} 下。以下所关涉到的文件以及文件夹默认包含以上 URL 为前缀。大多数是模仿攻击的 HTML 以及 Javascript 代码，其中某些功能需要将代码布置到服务器上并使用 HTTPS 访问。
+
+\subsection{概念验证}
+
+\href{https://blog.lbherrera.me/}{Luan Herrera} 在 2019 年提出了基于 service worker 以及 Performance API，影响到 Chromium 的攻击 \cite{herrera}。Service worker 可以作为网页、浏览器以及互联网之间的代理 \cite{sw} 。它可以拦截一个网页发出的请求，并为此返回响应。Performance API 让开发者精确地测量网页在用户的设备上的性能 \cite{papi}。其中的 \code{performance.getEntries()} 返回所有此网页及其资源的加载所产生的 \code{PerformanceEntry} 对象。
+
+攻击过程如下：
+
+\begin{enumerate}
+    \item 安装拦截 range header（字节范围头）为 \code{bytes=0-} 的请求的 Service Worker。
+    \item 使用 \code{audio} 或 \code{video} 元素向目标资源发出请求，其请求中的字节范围头为 \code{bytes=0-}。
+    \item Service Worker 拦截以上的请求，并返回任意内容，长度为 \code{n} 的响应。Chromium 会再发出类似的请求，类以区别是 \code{bytes=0-} 变成了 \code{bytes=n-}。分两种情况：
+    \begin{enumerate}
+        \item 目标资源的大小小于等于 \code{n}，则请求失败，服务器返回 \code{416} 状态码，此事件不产生 \code{PerformanceEntry}
+        \item 目标资源的大小大于 \code{n}，则请求成功，服务器返回 \code{206} 状态码，此事件产生 \code{PerformanceEntry}
+    \end{enumerate}
+    \item 使用 \code{performance.getEntries().length} 可以得知当前的请求是否产生了 \code{PerformanceEntry}，从而可以判断目标资源的大小是否小于 \code{n}。
+\end{enumerate}
+
+通过改变 \code{n}，比如用二分查找，可以较快地判定目标资源的大小。此攻击的源代码来源于 \url{https://lbherrera.github.io/lab/chrome-8b024c22/sizeleak.html}，并复制到了 Github 库的 \href{https://github.com/georgetian3/xsleaks/tree/main/src/poc-original}{/poc-original} 中。
+
+\subsection{修复方法}
+
+由于概念验证中检测资源大小是基于\code{PerformanceEntry} 的个数从而判别成功与失败的请求，修复方法是将两种请求都产生 \code{PerformanceEntry} \cite{fix}：
+
+\begin{quote}
+    Currently we don't report performance entries with failing status codes.
+    From the spec's perspective, reporting aborts is a MAY, but failing
+    status code responses should not be considered aborts. [1]
+    Chromium is the only engine which doesn't report those entries.
+    This CL fixes that to report them similarly to successful status codes.
+\end{quote}
+
+\newpage
+
+此修复的具体实现比较简单。源代码的版本库 \cite{fixcode} 将
+
+\begin{lstlisting}
+if (resource->GetResponse().IsHTTP() &&
+    resource->GetResponse().HttpStatusCode() < 400)
+\end{lstlisting}
+
+改成 
+
+\begin{lstlisting}
+if (resource->GetResponse().IsHTTP())
+\end{lstlisting}
+
+即任何响应，无论状态码表示成功或失败，都会产生一个 \code{PerformanceEntry}。
+
+通过运行 Luan 的概念验证，可以确认此修复成功地防止此攻击。
+
+\subsection{\code{PerformanceEntry} 的创建条件}
+
+修复了以上的攻击之后，Chromium 的开发者再次更改了创建 \code{PerformanceEntry} 的条件，变成了：
+
+\begin{lstlisting}
+if (resource->GetResponse().ShouldPopulateResourceTiming())
+\end{lstlisting}
+
+其中 \code{ShouldPopulateResourceTiming} 的定义为：
+
+\begin{lstlisting}
+bool ResourceResponse::ShouldPopulateResourceTiming() const {
+    return IsHTTP() || WebBundleURL().IsValid();
+}
+\end{lstlisting}
+    
+若希望通过 \code{performance.getEntries()} 的行为的差异实现一个漏洞，就需要分析如何
+
+\noindent\code{ShouldPopulateResourceTiming()} 返回不同的布尔值。其中 \code{WebBundelURL()} 返回的是 \code{KURL} 类，而 \code{IsValid()} 返回的是 \code{KURL} 类的 \code{is_valid_} 变量，而可以改变 \code{is_valid_} 的成员函数为构造函数、拷贝构造函数、\code{Init}、以及 \code{ReplaceComponents}。\code{IsHTTP()} 返回 \code{KURL} 类的 \code{protocol_is_in_http_family_} 变量，默认为假，而唯一将它设为真的地方在 \code{InitProtocolMetadata} 成员函数。由于代码比较繁琐，所以不再进一步分析这个方面。
+
+\subsection{其他标签的测试}
+
+Herrara 在它的概念验证中提到需要用 \code{audio} 或 \code{video} 标签实现攻击。此次测试目的是为了判定在修复 \code{PerformanceEntry} 的产生条件之前，其他哪些标签也可以发出请求。测试代码存放在 \href{https://github.com/georgetian3/xsleaks/tree/main/src/tags}{/tags} 下。
+
+
+img vs audio/video in determining file type
+
+
+
+\code{performance.getEntries()} 的稳定性也较差。在测试 POC 的过程中，偶尔需要多次刷新后请求才会被 service worker 拦截。甚至在发出请求的时刻调整浏览器窗口的大小会改变此请求完成后产生的 \code{PerformanceEntry} 对象，以及将 \code{onsuspend} 时间属性被调用。
+
+
+不稳定
+    
+    
+    假设资源的 URL 是 \code{target.com/resource}。只有 \code{audio} 以及 \code{video} 元素在 URL 中加入 \code{size} 参数时，比如 \code{target.com/resource&size=25}，浏览器才会将

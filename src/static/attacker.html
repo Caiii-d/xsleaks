@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <title>Hello World</title>
+  </head>
+
+  <script>
+    function test() {
+      let url = 'http://ibgang.com:8880/static/img.png'
+      const req = new XMLHttpRequest();
+      req.open("GET", url, false);
+      let start = performance.now();
+      let resp = req.send();
+      let end = performance.now();
+      console.log(end - start, resp);
+    }
+  </script>
+
+
+  <body onload="test()">
+    <img src="http://georgetian.com:8880/static/img2.png">
+    
+  </body>
+</html>
